@@ -74,11 +74,11 @@ def skip_mission(token):
 			else:
 				logs = backend_data['FunctionResult']
 				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} 𝐌𝐨𝐧𝐞𝐲 {yellow}𝐀𝐝𝐝 𝐓𝐨 𝐘𝐨𝐮 𝐀𝐜𝐜𝐨𝐮𝐧𝐭""")
+				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
 				chat = backend_data['Logs']
 				uang= chat[len(chat)-1]['Message'].split()[5]
 				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}𝐓𝐨𝐭𝐚𝐥 𝐏𝐞𝐧𝐠𝐡𝐚𝐬𝐢𝐥𝐚𝐧 𝐍𝐠𝐞𝐩𝐞𝐭 𝐊𝐚𝐦𝐮 {red}Rp:{green}{uang}")
+				ketik(f"➤➤➤ {yellow} DONE {red}Rp:{green}{uang}")
 				ketik(f"{red}______________{green}________________________{red}_______________")
 				
 
@@ -107,11 +107,11 @@ def skip_missionnnnn():
 				logs = backend_data['FunctionResult']
 				hook = logs['value']
 				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{hook}{blue} 𝐌𝐨𝐧𝐞𝐲 {yellow}𝐀𝐝𝐝 𝐓𝐨 𝐘𝐨𝐮 𝐀𝐜𝐜𝐨𝐮𝐧𝐭""")
+				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{hook}{blue} UANG {yellow}KE AKUN""")
 				chat = backend_data['Logs']
 				uang= chat[len(chat)-1]['Message'].split()[9]
 				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}𝐓𝐨𝐭𝐚𝐥 𝐏𝐞𝐧𝐠𝐡𝐚𝐬𝐢𝐥𝐚𝐧 𝐍𝐠𝐞𝐩𝐞𝐭 𝐊𝐚𝐦𝐮 {red}Rp:{green}{uang}")
+				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
 				ketik(f"{red}______________{green}________________________{red}_______________")
 				
 
@@ -153,11 +153,11 @@ def skip_missionn(token):
 			else:
 				logs = backend_data['FunctionResult']
 				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} 𝐌𝐨𝐧𝐞𝐲 {yellow}𝐀𝐝𝐝 𝐓𝐨 𝐘𝐨𝐮 𝐀𝐜𝐜𝐨𝐮𝐧𝐭""")
+				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
 				chat = backend_data['Logs']
 				uang= chat[len(chat)-1]['Message'].split()[5]
 				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}𝐓𝐨𝐭𝐚𝐥 𝐏𝐞𝐧𝐠𝐡𝐚𝐬𝐢𝐥𝐚𝐧 𝐍𝐠𝐞𝐩𝐞𝐭 𝐊𝐚𝐦𝐮 {red}Rp:{green}{uang}")
+				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
 				ketik(f"{red}______________{green}________________________{red}_______________")
 				
 
@@ -205,11 +205,11 @@ def skip_missionnn(token):
 			else:
 				logs = backend_data['FunctionResult']
 				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} 𝐌𝐨𝐧𝐞𝐲 {yellow}𝐀𝐝𝐝 𝐓𝐨 𝐘𝐨𝐮 𝐀𝐜𝐜𝐨𝐮𝐧𝐭""")
+				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
 				chat = backend_data['Logs']
 				uang= chat[len(chat)-1]['Message'].split()[5]
 				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}𝐓𝐨𝐭𝐚𝐥 𝐏𝐞𝐧𝐠𝐡𝐚𝐬𝐢𝐥𝐚𝐧 𝐍𝐠𝐞𝐩𝐞𝐭 𝐊𝐚𝐦𝐮 {red}Rp:{green}{uang}")
+				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
 				ketik(f"{red}______________{green}________________________{red}_______________")
 				
 
@@ -269,11 +269,11 @@ ketik(f"""     {white}╔══╗╔╗─╔╦═══╗──╔═══�
      {red}╚═══╩═══╩═══╝──╚═══╩══╩╝╚╝╚╩═══╩═══╩╝─╚╝─╚╝─╚═══╩╝╚═╩╩══╩═══╝""")
 #ketik(f"{white}▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
 ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-ketik(f"""   {white} - Pembuat {green}OTAK ATIK APK           {white}  - YouTube {green} OTAK ATIK APK """)
+ketik(f"""   {white} - Pembuat {green}0xArnd           {white}  - Data {green} PyBussid """)
 ketik(f"""   {white} - Script {green}BUS SIMULATOR ID        {white}  - Version {green} 5.0 """)
 ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-ketik(f"""   {white} -  {green} JANGAN LUPA SUBSCRIBE LIKE KOMEN CHANNEL SAYA""")
-ketik(f"""   {white} -  {green} DON'T FORGET TO SUBSCRIBE LIKE COMMENT MY CHANNEL""")
+ketik(f"""   {white} -  {green} FUCK KIDAUS""")
+ketik(f"""   {white} -  {green} FUCK LORENOS""")
 ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 def mxx():
 	data = json.dumps({"PlayFabId":None,"InfoRequestParameters":{"GetUserAccountInfo":True,"GetUserInventory":True,"GetUserVirtualCurrency":True,"GetUserData":False,"UserDataKeys":None,"GetUserReadOnlyData":True,"UserReadOnlyDataKeys":None,"GetCharacterInventories":False,"GetCharacterList":False,"GetTitleData":True,"TitleDataKeys":None,"GetPlayerStatistics":False,"PlayerStatisticNames":None}})
@@ -296,7 +296,7 @@ def mxx():
 				you= id['DisplayName']
 				ketik(f"{white}    - Total_Money: {green}{money}       {white}    - You_Id: {green}{you}")
 				
-ketik(f"{white}                         Info Yo Account")				
+ketik(f"{white}                         Info Your Account")				
 def hack():
 	mxx()
 					
@@ -307,9 +307,9 @@ headers['X-Authorization'] = auth
 hack()
 ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 ketik(f" {white} Di Pilih Salah Satu:")
-ketik(f"           {yellow}[{red}1{yellow}] {green}TopUp UB 1+JT/DeTik")
-ketik(f"           {yellow}[{red}2{yellow}] {green}TopUp UB 800+RB/DeTik")
-ketik(f"           {yellow}[{red}3{yellow}] {green}TopUp UB 500+RB/DeTik")
+ketik(f"           {yellow}[{red}1{yellow}] {green}TopUp UB 1+JT")
+ketik(f"           {yellow}[{red}2{yellow}] {green}TopUp UB 800K")
+ketik(f"           {yellow}[{red}3{yellow}] {green}TopUp UB 500K")
 ketik(f"           {yellow}[{red}4{yellow}] {green}EXIT")
 
 
