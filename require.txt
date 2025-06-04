@@ -1,5 +1,1 @@
-pyfiglet
-requests
-colorama
-pytz
 requests
