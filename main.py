@@ -1,337 +1,143 @@
-# module
-from os import system
-from time import sleep
-import sys, datetime
-import os,sys,time
-import requests, json, time, threading, os, sys
-from colorama import Fore, init
+#!/usr/bin/env python3
 
-import time
+import argparse
+import sys
+import requests
 
-def countdownTimer(start_minute, start_second):
-    total_second = start_minute * 60 + start_second
-    while total_second:
-        mins, secs = divmod(total_second, 60)
-        print(f'{mins:02d}:{secs:02d}', end='\r')
-        time.sleep(1)
-        total_second -= 1
-    print("""\33[0;35m==========================""") 
+def get_coordinates(city_name: str):
+    """
+    Retrieves latitude, longitude, and country for a given city name using the Open-Meteo Geocoding API.
+    """
+    url = "https://geocoding-api.open-meteo.com/v1/search"
+    params = {
+        "name": city_name,
+        "count": 1,
+        "language": "en",
+        "format": "json"
+    }
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        data = response.json()
+        if not data.get("results"):
+            return None, None, None
+        result = data["results"][0]
+        return result.get("latitude"), result.get("longitude"), result.get("country")
+    except requests.exceptions.RequestException as e:
+        print(f"Error during geocoding API request: {e}", file=sys.stderr)
+        return None, None, None
+    except (KeyError, IndexError, TypeError, ValueError) as e: # Added ValueError
+        print(f"Error parsing geocoding API response: {e}", file=sys.stderr)
+        return None, None, None
+
+def get_weather(latitude: float, longitude: float):
+    """
+    Retrieves current weather data for given latitude and longitude using the Open-Meteo Forecast API.
+    """
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "current": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+        "temperature_unit": "celsius",
+        "wind_speed_unit": "kmh",
+        "timezone": "auto"
+    }
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        if not data.get("current"):
+            return None
+
+        current_weather = data["current"]
+        return {
+            "temperature_2m": current_weather.get("temperature_2m"),
+            "relative_humidity_2m": current_weather.get("relative_humidity_2m"),
+            "weather_code": current_weather.get("weather_code"),
+            "wind_speed_10m": current_weather.get("wind_speed_10m"),
+        }
+    except requests.exceptions.RequestException as e:
+        print(f"Error during weather API request: {e}", file=sys.stderr)
+        return None
+    except (KeyError, TypeError, ValueError) as e: # Added ValueError
+        print(f"Error parsing weather API response: {e}", file=sys.stderr)
+        return None
+
+def get_weather_emoji(weather_code: int) -> str:
+    """
+    Returns an emoji corresponding to the WMO weather interpretation code.
+    """
+    if weather_code is None:
+        return "❓"
+    # WMO Weather interpretation codes
+    if weather_code == 0:
+        return "☀️"  # Clear sky
+    elif weather_code == 1:
+        return "🌤️"  # Mainly clear
+    elif weather_code == 2:
+        return "🌥️"  # Partly cloudy
+    elif weather_code == 3:
+        return "☁️"  # Overcast
+    elif weather_code in [45, 48]:
+        return "🌫️"  # Fog and depositing rime fog
+    elif weather_code in [51, 53, 55]:
+        return "💧"  # Drizzle: Light, moderate, and dense intensity
+    elif weather_code in [56, 57]:
+        return "🥶"  # Freezing Drizzle: Light and dense intensity
+    elif weather_code in [61, 63, 65]:
+        return "🌧️"  # Rain: Slight, moderate and heavy intensity
+    elif weather_code in [66, 67]:
+        return "🥶🌧️" # Freezing Rain: Light and heavy intensity
+    elif weather_code in [71, 73, 75]:
+        return "❄️"  # Snow fall: Slight, moderate, and heavy intensity
+    elif weather_code == 77:
+        return "❄️"  # Snow grains
+    elif weather_code in [80, 81, 82]:
+        return "🌦️"  # Rain showers: Slight, moderate, and violent
+    elif weather_code in [85, 86]:
+        return "❄️🌨️" # Snow showers slight and heavy
+    elif weather_code == 95: # Corresponds to WMO codes 95
+        return "⛈️"  # Thunderstorm: Slight or moderate
+    elif weather_code in [96, 99]: # Corresponds to WMO codes 96, 99
+        return "⛈️"  # Thunderstorm with slight and heavy hail
+    else:
+        return "❓"  # Default for unknown codes
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Get the current weather for a city.")
+    parser.add_argument("city_name", help="The name of the city")
+
+    args = parser.parse_args()
+
+    latitude, longitude, country = get_coordinates(args.city_name)
+
+    if latitude is None or longitude is None:
+        print(f"Error: City '{args.city_name}' not found or geocoding failed.", file=sys.stderr)
+        sys.exit(1)
+
+    weather_data = get_weather(latitude, longitude)
+
+    if weather_data is None:
+        print("Error: Could not retrieve weather data for the location.", file=sys.stderr)
+        sys.exit(1)
+
+    weather_emoji = get_weather_emoji(weather_data.get("weather_code"))
     
- 
-# Config
-red = Fore.LIGHTRED_EX
-green = Fore.LIGHTGREEN_EX
-yellow = Fore.LIGHTYELLOW_EX
-blue = Fore.LIGHTBLUE_EX
-white = Fore.WHITE
-system("clear")
-auth = input(f"{yellow}𝗬𝗢𝗨 𝗧𝗢𝗞𝗘𝗡::{red}")
+    country_display = f", {country}" if country else ""
 
+    print(f"Weather in {args.city_name}{country_display}:")
+    if weather_data.get("temperature_2m") is not None:
+        print(f"{weather_emoji} {weather_data['temperature_2m']}°C")
+    else:
+        print(f"{weather_emoji} Temperature data not available")
 
+    if weather_data.get("relative_humidity_2m") is not None:
+        print(f"Humidity: {weather_data['relative_humidity_2m']}%")
+    else:
+        print("Humidity data not available")
 
-
-
-
-
-record = [{'Key': {'sourceCity': 'BKL', 'destinationCity': 'SBY', 'routePassed': ['SBY', 'BKL'], 'activityRewards': None}, 'Value': 40},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'SMG', 'routePassed': ['SMG', 'SBY'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'SMG', 'routePassed': ['SMG', 'BKL'], 'activityRewards': None}, 'Value': 20},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'SMG'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'SBY'], 'activityRewards': None}, 'Value': 13},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'BKL'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'CBN'], 'activityRewards': None}, 'Value': 45},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'SMG'], 'activityRewards': None}, 'Value': 9},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'SBY'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'BKL', 'routePassed': ['BKL', 'JKT'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'JKT'], 'activityRewards': None}, 'Value': 45},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'CBN'], 'activityRewards': None}, 'Value': 9},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'SMG'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'SBY'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'BKL'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'P_Merak'], 'activityRewards': None}, 'Value': 5}, {'Key': {'sourceCity': 'JKT', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'JKT'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'CBN'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'SMG'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'SBY'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'BKL'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'P_Merak'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'JKT'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'CBN'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'SMG'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'SBY'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'BKL'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'PLB', 'routePassed': ['LPG', 'SBY'], 'activityRewards': None}, 'Value': 55},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 11},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'P_Merak'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'JKT'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'CBN'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'SMG'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'SBY'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'BKL'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'PLB', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'PLB'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'LPG'], 'activityRewards': None}, 'Value': 10},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'P_Merak'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'JKT'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'CBN'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'SMG'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'SBY'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'BKL'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'JMB', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'JMB'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'PLB', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'PLB'], 'activityRewards': None}, 'Value': 12},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'LPG'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'P_Merak'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'JKT'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'CBN'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'SMG'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'SBY'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'BKL'], 'activityRewards': None}, 'Value': 1},{"Key":{"sourceCity":"PBR","destinationCity":"BKT","routePassed":["BKT","PBR"],"activityRewards":None},"Value":50},{"Key":{"sourceCity":"PBR","destinationCity":"PDG","routePassed":["PDG","BKT","PBR"],"activityRewards":None},"Value":9},{"Key":{"sourceCity":"BKT","destinationCity":"PDG","routePassed":["PDG","BKT"],"activityRewards":None},"Value":50},]            
-
-
-
-
-                                
-headers = {'User-Agent': 'UnityEngine-Unity; Version: 2018.4.26f1','X-ReportErrorAsSuccess': 'true','X-PlayFabSDK': 'UnitySDK-2.20.170411','X-Authorization': '','Content-Type': 'application/json','Content-Length': '223','Host': '4ae9.playfabapi.com'}
-
-
-
-def create_mission():
-	game_data = '{"FunctionName":"PlayCareer","FunctionParameter":{"cities":["BKL","SBY","SMG","CBN","JKT","P_Merak","P_Bakauheni","LPG","PLB","JMB","PBR","BKT","PDG"]},"RevisionSelection":"Live","SpecificRevision":null,"GeneratePlayStreamEvent":false}'
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=game_data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			return None
-		elif parser['code'] == 200:
-			data = parser['data']
-			if "apiError" in str(data):
-				return None
-			else:
-				carrer = data['FunctionResult']['careerSession']
-				return carrer
-	else:
-		return None
-
-def skip_mission(token):
-	data = json.dumps({"FunctionName":"FarePayment","FunctionParameter":{"records":record,"bonus":True,"careerToken":token,"activityRewardToken":"{\"rewards\":[]}"},"RevisionSelection":"Live","SpecificRevision":None,"GeneratePlayStreamEvent":False})
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			pass
-		elif parser['code'] == 200:
-			backend_data = parser['data']
-			if "apiError" in str(backend_data):
-				pass
-			else:
-				logs = backend_data['FunctionResult']
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
-				chat = backend_data['Logs']
-				uang= chat[len(chat)-1]['Message'].split()[5]
-				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow} DONE {red}Rp:{green}{uang}")
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				
-
-def pass_mission():
-	carrer = create_mission()
-	if carrer != None:	
-		token = carrer['token']
-		skip_mission(token)
-		
-headers['X-Authorization'] = auth
-
-
-
-def skip_missionnnnn():
-	data = json.dumps({"FunctionName":"RewardProcess","FunctionParameter":None,"RevisionSelection":"Live","SpecificRevision":None,"GeneratePlayStreamEvent":False})
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			pass
-		elif parser['code'] == 200:
-			backend_data = parser['data']
-			if "apiError" in str(backend_data):
-				pass
-			else:
-				logs = backend_data['FunctionResult']
-				hook = logs['value']
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{hook}{blue} UANG {yellow}KE AKUN""")
-				chat = backend_data['Logs']
-				uang= chat[len(chat)-1]['Message'].split()[9]
-				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				
-
-
-headers['X-Authorization'] = auth
-
-
-
-#bagian 2
-#500 k
-def create_missionn():
-	game_data = '{"FunctionName":"PlayCareer","FunctionParameter":{"cities":["BKL","SBY","SMG","CBN","JKT","P_Merak","P_Bakauheni","LPG","PLB","JMB","PBR","BKT","PDG"]},"RevisionSelection":"Live","SpecificRevision":null,"GeneratePlayStreamEvent":false}'
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=game_data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			return None
-		elif parser['code'] == 200:
-			data = parser['data']
-			if "apiError" in str(data):
-				return None
-			else:
-				carrer = data['FunctionResult']['careerSession']
-				return carrer
-	else:
-		return None
-
-def skip_missionn(token):
-	data = json.dumps({"FunctionName":"FarePayment","FunctionParameter":{"records":record,"bonus":False,"careerToken":token,"activityRewardToken":"{\"rewards\":[]}"},"RevisionSelection":"Live","SpecificRevision":None,"GeneratePlayStreamEvent":False})
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			pass
-		elif parser['code'] == 200:
-			backend_data = parser['data']
-			if "apiError" in str(backend_data):
-				pass
-			else:
-				logs = backend_data['FunctionResult']
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
-				chat = backend_data['Logs']
-				uang= chat[len(chat)-1]['Message'].split()[5]
-				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				
-
-def pass_scs():
-	carrer = create_missionn()
-	if carrer != None:	
-		token = carrer['token']
-		skip_missionn(token)
-		
-headers['X-Authorization'] = auth
-
-		
-
-#800k
-recordd = [{'Key': {'sourceCity': 'BKL', 'destinationCity': 'SBY', 'routePassed': ['SBY', 'BKL'], 'activityRewards': None}, 'Value': 40},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'SMG', 'routePassed': ['SMG', 'SBY'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'SMG', 'routePassed': ['SMG', 'BKL'], 'activityRewards': None}, 'Value': 12},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'SMG'], 'activityRewards': None}, 'Value': 50},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'SBY'], 'activityRewards': None}, 'Value': 10},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'CBN', 'routePassed': ['CBN', 'BKL'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'CBN'], 'activityRewards': None}, 'Value': 45},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'SMG'], 'activityRewards': None}, 'Value': 9},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'JKT', 'routePassed': ['JKT', 'SBY'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'BKL', 'routePassed': ['BKL', 'JKT'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'JKT'], 'activityRewards': None}, 'Value': 45},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'CBN'], 'activityRewards': None}, 'Value': 9},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'SMG'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'SBY'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'P_Merak', 'routePassed': ['P_Merak', 'BKL'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'P_Merak'], 'activityRewards': None}, 'Value': 5}, {'Key': {'sourceCity': 'JKT', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'JKT'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'CBN'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'SMG'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'SBY'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'P_Bakauheni', 'routePassed': ['P_Bakauheni', 'BKL'], 'activityRewards': None}, 'Value': 0},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'P_Merak'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'JKT'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'CBN'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'SMG'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'SBY'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'LPG', 'routePassed': ['LPG', 'BKL'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'PLB', 'routePassed': ['LPG', 'SBY'], 'activityRewards': None}, 'Value': 55},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 11},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'P_Merak'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'JKT'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'CBN'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'SMG'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'SBY'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'PLB', 'routePassed': ['PLB', 'BKL'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'PLB', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'PLB'], 'activityRewards': None}, 'Value': 50},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'LPG'], 'activityRewards': None}, 'Value': 10},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 5},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'P_Merak'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'JKT'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'CBN'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'SMG'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'SBY'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'JMB', 'routePassed': ['JMB', 'BKL'], 'activityRewards': None}, 'Value': 1},{'Key': {'sourceCity': 'JMB', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'JMB'], 'activityRewards': None}, 'Value': 60},{'Key': {'sourceCity': 'PLB', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'PLB'], 'activityRewards': None}, 'Value': 12},{'Key': {'sourceCity': 'LPG', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'LPG'], 'activityRewards': None}, 'Value': 6},{'Key': {'sourceCity': 'P_Bakauheni', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'P_Bakauheni'], 'activityRewards': None}, 'Value': 4},{'Key': {'sourceCity': 'P_Merak', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'P_Merak'], 'activityRewards': None}, 'Value': 3},{'Key': {'sourceCity': 'JKT', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'JKT'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'CBN', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'CBN'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'SMG', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'SMG'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'SBY', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'SBY'], 'activityRewards': None}, 'Value': 2},{'Key': {'sourceCity': 'BKL', 'destinationCity': 'PBR', 'routePassed': ['PBR', 'BKL'], 'activityRewards': None}, 'Value': 1},]                                                   
-headers = {'User-Agent': 'UnityEngine-Unity; Version: 2018.4.26f1','X-ReportErrorAsSuccess': 'true','X-PlayFabSDK': 'UnitySDK-2.20.170411','X-Authorization': '','Content-Type': 'application/json','Content-Length': '223','Host': '4ae9.playfabapi.com'}
-def create_missionnn():
-	game_data = '{"FunctionName":"PlayCareer","FunctionParameter":{"cities":["BKL","SBY","SMG","CBN","JKT","P_Merak","P_Bakauheni","LPG","PLB","JMB","PBR"]},"RevisionSelection":"Live","SpecificRevision":null,"GeneratePlayStreamEvent":false}'
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=game_data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			return None
-		elif parser['code'] == 200:
-			data = parser['data']
-			if "apiError" in str(data):
-				return None
-			else:
-				carrer = data['FunctionResult']['careerSession']
-				return carrer
-	else:
-		return None
-
-def skip_missionnn(token):
-	data = json.dumps({"FunctionName":"FarePayment","FunctionParameter":{"records":recordd,"bonus":True,"careerToken":token,"activityRewardToken":"{\"rewards\":[]}"},"RevisionSelection":"Live","SpecificRevision":None,"GeneratePlayStreamEvent":False})
-	response = requests.post('https://4ae9.playfabapi.com/Client/ExecuteCloudScript', headers=headers, data=data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			pass
-		elif parser['code'] == 200:
-			backend_data = parser['data']
-			if "apiError" in str(backend_data):
-				pass
-			else:
-				logs = backend_data['FunctionResult']
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				ketik(f"""\33[0;34;44m\33[1;37m ✔ \33[1;34m\33[0m\33[   {blue}Add {green}{logs}{blue} UANG {yellow}KE AKUN""")
-				chat = backend_data['Logs']
-				uang= chat[len(chat)-1]['Message'].split()[5]
-				ketik(f"_____________________________________________________")
-				ketik(f"➤➤➤ {yellow}DONE {red}Rp:{green}{uang}")
-				ketik(f"{red}______________{green}________________________{red}_______________")
-				
-
-def pass_missionnn():
-	carrer = create_missionnn()
-	if carrer != None:	
-		token = carrer['token']
-		skip_missionnn(token)
-		
-		
-headers['X-Authorization'] = auth
-
-
-
-
-         
-def ngopi():
-    for i in range(jum):
-             pass_mission()
-def ngopii():
-    for i in range(haya):
-             pass_missionnn()
-         
-def crot():
-    for i in range(gugun):
-             pass_scs()
-             
-def crott():
-    skip_missionnnnn()
-    countdownTimer(36, 00) 
-
- 
-def ketik(c):
-    for e in c + "\n" :
-        sys.stdout.write(e)
-        sys.stdout.flush()
-        sleep(0.002)
-ketik("SCRIPT BUSSID V3.7.1")   
-system("clear")
-kal = datetime.datetime.now()
-
-
-
-def menu1():
-    sys.stdout.write(e)
-    sys.stdout.flush()
-    sleep(0.002)
-   
-    
-ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-#ketik(f"{white}▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
-ketik(f"""     {white}╔══╗╔╗─╔╦═══╗──╔═══╦══╦═╗╔═╦╗─╔╦╗──╔═══╦════╦═══╦═══╗╔══╦═══╗
-     {white}║╔╗║║║─║║╔═╗║──║╔═╗╠╣╠╣║╚╝║║║─║║║──║╔═╗║╔╗╔╗║╔═╗║╔═╗║╚╣╠╩╗╔╗║
-     {white}║╚╝╚╣║─║║╚══╗──║╚══╗║║║╔╗╔╗║║─║║║──║║─║╠╝║║╚╣║─║║╚═╝╠╗║║─║║║║
-     {red}║╔═╗║║─║╠══╗╠══╬══╗║║║║║║║║║║─║║║─╔╣╚═╝║─║║─║║─║║╔╗╔╝╚╣║─║║║║
-     {red}║╚═╝║╚═╝║╚═╝╠══╣╚═╝╠╣╠╣║║║║║╚═╝║╚═╝║╔═╗║─║║─║╚═╝║║║╚╗╔╣╠╦╝╚╝║
-     {red}╚═══╩═══╩═══╝──╚═══╩══╩╝╚╝╚╩═══╩═══╩╝─╚╝─╚╝─╚═══╩╝╚═╩╩══╩═══╝""")
-#ketik(f"{white}▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
-ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-ketik(f"""   {white} - Pembuat {green}0xArnd           {white}  - Data {green} PyBussid """)
-ketik(f"""   {white} - Script {green}BUS SIMULATOR ID        {white}  - Version {green} 5.0 """)
-ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-ketik(f"""   {white} -  {green} FUCK KIDAUS""")
-ketik(f"""   {white} -  {green} FUCK LORENOS""")
-ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-def mxx():
-	data = json.dumps({"PlayFabId":None,"InfoRequestParameters":{"GetUserAccountInfo":True,"GetUserInventory":True,"GetUserVirtualCurrency":True,"GetUserData":False,"UserDataKeys":None,"GetUserReadOnlyData":True,"UserReadOnlyDataKeys":None,"GetCharacterInventories":False,"GetCharacterList":False,"GetTitleData":True,"TitleDataKeys":None,"GetPlayerStatistics":False,"PlayerStatisticNames":None}})
-	response = requests.post('https://4ae9.playfabapi.com/Client/GetPlayerCombinedInfo', headers=headers, data=data).text
-	if response != '':
-		parser = json.loads(response)
-		if parser['code'] == 401:
-			pass
-		elif parser['code'] == 200:
-			backend_data = parser['data']
-			if "apiError" in str(backend_data):
-				pass
-			else:
-				chat = backend_data['InfoResultPayload']
-				uang= chat['UserVirtualCurrency']
-				money= uang['RP']
-				
-				gcc= chat['AccountInfo']
-				id= gcc['TitleInfo']
-				you= id['DisplayName']
-				ketik(f"{white}    - Total_Money: {green}{money}       {white}    - You_Id: {green}{you}")
-				
-ketik(f"{white}                         Info Your Account")				
-def hack():
-	mxx()
-					
-headers['X-Authorization'] = auth
-
-
-
-hack()
-ketik(f"\33[36;1m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-ketik(f" {white} Di Pilih Salah Satu:")
-ketik(f"           {yellow}[{red}1{yellow}] {green}TopUp UB 1+JT")
-ketik(f"           {yellow}[{red}2{yellow}] {green}TopUp UB 800K")
-ketik(f"           {yellow}[{red}3{yellow}] {green}TopUp UB 500K")
-ketik(f"           {yellow}[{red}4{yellow}] {green}EXIT")
-
-
-
-
-
-
-
-
-
-
-
-
-contoh = input (f"{white} options:")
-if contoh =="1":
-   jum = int(input(f"{yellow}                    𝐉𝐔𝐌𝐋𝐀𝐇 𝐍𝐔𝐘𝐔𝐋 :{red} "))
-   ngopi()
-elif contoh =="2":
-   haya = int(input(f"{yellow}                    𝐉𝐔𝐌𝐋𝐀𝐇 𝐍𝐔𝐘𝐔𝐋 :{red} "))
-   ngopii()
-elif contoh =="3":
-     gugun = int(input(f"{yellow}                    𝐉𝐔𝐌𝐋𝐀𝐇 𝐍𝐔𝐘𝐔𝐋 :{red} "))
-     crot()
-elif contoh =="4":    
-     sys.exit()
+    if weather_data.get("wind_speed_10m") is not None:
+        print(f"Wind: {weather_data['wind_speed_10m']} km/h")
+    else:
+        print("Wind speed data not available")
